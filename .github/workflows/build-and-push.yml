@@ -10,14 +10,16 @@ on:
 env:
   JAVA_VERSION: '24'
   APP_NAME: 'my-springboot-app' # ชื่อแอปพลิเคชัน (ควรตรงกับชื่อ Docker image ส่วนท้าย)
-  # IMAGE_TAG จะสร้างโดยอัตโนมัติเป็น ghcr.io/<owner>/<repo-name>:<commit-sha>
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    # กำหนด Environment Variable สำหรับ Image Tag โดยตรงในระดับ Job
+    env:
+      IMAGE_TAG: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.sha }}
     outputs:
-      # ส่งค่า IMAGE_TAG ออกไปเผื่อ repo อื่นจะใช้ (แต่เราจะส่งไปเป็น input ใน deploy workflow)
-      image_tag_output: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.sha }}
+      # ยังคง Output เพื่อส่งค่าไปยัง Job อื่นๆ (ถ้ามี)
+      image_tag_output: ${{ env.IMAGE_TAG }}
 
     steps:
       - name: Checkout code
@@ -38,12 +40,12 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }} # GITHUB_TOKEN มีสิทธิ์ push ไป GHCR อยู่แล้ว
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-and-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ env.IMAGE_TAG_OUTPUT }} # ใช้ tag ที่สร้างจาก output
+          tags: ${{ env.IMAGE_TAG }} # <-- อ้างอิงถึง Environment Variable ที่กำหนดในระดับ Job
           file: ./Dockerfile
