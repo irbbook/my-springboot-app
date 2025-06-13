@@ -47,7 +47,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }} # ใช้ GITHUB_TOKEN ซึ่งตอนนี้มีสิทธิ์เขียน package แล้ว
 
       - name: Build and push Docker image
-        uses: docker/build-and-push-action@v5
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
