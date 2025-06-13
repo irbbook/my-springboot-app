@@ -8,17 +8,21 @@ on:
   workflow_dispatch: # อนุญาตให้ Trigger ด้วยมือ
 
 env:
-  JAVA_VERSION: '24'
-  APP_NAME: 'my-springboot-app' # ชื่อแอปพลิเคชัน (ควรตรงกับชื่อ Docker image ส่วนท้าย)
+  JAVA_VERSION: '17'
+  APP_NAME: 'my-springboot-app'
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    # กำหนด Environment Variable สำหรับ Image Tag โดยตรงในระดับ Job
+    # *** เพิ่มบล็อก permissions นี้เข้ามาตรงนี้ครับ ***
+    permissions:
+      contents: read # อนุญาตให้อ่านโค้ดใน repo
+      packages: write # *** สำคัญมาก: อนุญาตให้เขียน packages (GHCR) ***
+    # ************************************************
+
     env:
       IMAGE_TAG: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.sha }}
     outputs:
-      # ยังคง Output เพื่อส่งค่าไปยัง Job อื่นๆ (ถ้ามี)
       image_tag_output: ${{ env.IMAGE_TAG }}
 
     steps:
@@ -40,12 +44,12 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GITHUB_TOKEN }} # ใช้ GITHUB_TOKEN ซึ่งตอนนี้มีสิทธิ์เขียน package แล้ว
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-and-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ env.IMAGE_TAG }} # <-- อ้างอิงถึง Environment Variable ที่กำหนดในระดับ Job
+          tags: ${{ env.IMAGE_TAG }}
           file: ./Dockerfile
