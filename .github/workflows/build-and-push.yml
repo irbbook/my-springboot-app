@@ -1,0 +1,49 @@
+# .github/workflows/build-and-push.yml (ใน my-springboot-app repo)
+name: Build & Push Spring Boot Docker Image
+
+on:
+  push:
+    branches:
+      - main # หรือ branch ที่คุณใช้พัฒนา
+  workflow_dispatch: # อนุญาตให้ Trigger ด้วยมือ
+
+env:
+  JAVA_VERSION: '24'
+  APP_NAME: 'my-springboot-app' # ชื่อแอปพลิเคชัน (ควรตรงกับชื่อ Docker image ส่วนท้าย)
+  # IMAGE_TAG จะสร้างโดยอัตโนมัติเป็น ghcr.io/<owner>/<repo-name>:<commit-sha>
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      # ส่งค่า IMAGE_TAG ออกไปเผื่อ repo อื่นจะใช้ (แต่เราจะส่งไปเป็น input ใน deploy workflow)
+      image_tag_output: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.sha }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven' # Or 'gradle'
+
+      - name: Build Spring Boot application
+        run: mvn clean package -DskipTests # Or 'gradlew bootJar'
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }} # GITHUB_TOKEN มีสิทธิ์ push ไป GHCR อยู่แล้ว
+
+      - name: Build and push Docker image
+        uses: docker/build-and-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE_TAG_OUTPUT }} # ใช้ tag ที่สร้างจาก output
+          file: ./Dockerfile
