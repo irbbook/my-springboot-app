@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_NAME: irbook/springboot-simple-app
+  IMAGE_NAME: irbook/${{ github.repository }}
   JAVA_VERSION: '24'
 
 jobs:
