@@ -3,7 +3,7 @@ name: Build & Push Docker Image
 on:
   push:
     branches: [ "main" ]
-    workflow_dispatch:
+  workflow_dispatch:
 
 env:
   IMAGE_NAME: irbook/springboot-simple-app
