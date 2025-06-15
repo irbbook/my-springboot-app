@@ -1,33 +1,24 @@
-# .github/workflows/build-and-push.yml (ใน my-springboot-app repo)
-name: Build & Push Spring Boot Docker Image
+name: Build & Push Docker Image
 
 on:
   push:
-    branches:
-      - main # หรือ branch ที่คุณใช้พัฒนา
-  workflow_dispatch: # อนุญาตให้ Trigger ด้วยมือ
+    branches: [ "main" ]
+    workflow_dispatch:
 
 env:
+  IMAGE_NAME: irbook/springboot-simple-app
   JAVA_VERSION: '24'
-  APP_NAME: 'my-springboot-app'
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
-    # *** เพิ่มบล็อก permissions นี้เข้ามาตรงนี้ครับ ***
     permissions:
       contents: read # อนุญาตให้อ่านโค้ดใน repo
       packages: write # *** สำคัญมาก: อนุญาตให้เขียน packages (GHCR) ***
-    # ************************************************
-
-    env:
-      IMAGE_TAG: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.sha }}
-    outputs:
-      image_tag_output: ${{ env.IMAGE_TAG }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
@@ -36,20 +27,20 @@ jobs:
           distribution: 'temurin'
           cache: 'maven' # Or 'gradle'
 
-      - name: Build Spring Boot application
-        run: mvn clean package -DskipTests # Or 'gradlew bootJar'
+      - name: Make Maven Wrapper executable
+        run: chmod +x ./mvnw
 
-      - name: Log in to GitHub Container Registry (GHCR)
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }} # ใช้ GITHUB_TOKEN ซึ่งตอนนี้มีสิทธิ์เขียน package แล้ว
+      - name: Build with Maven
+        run: ./mvnw package -DskipTests
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
         with:
-          context: .
-          push: true
-          tags: ${{ env.IMAGE_TAG }}
-          file: ./Dockerfile
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: docker build -t $IMAGE_NAME:latest .
+
+      - name: Push Docker image
+        run: docker push $IMAGE_NAME:latest
